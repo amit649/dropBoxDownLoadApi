@@ -30,7 +30,6 @@ const getAccessTokenUsingRefreshToken=()=>{
    
 }
 
-const LocalStorageFolderRootPath="./test/"
 const getAllFilesFromDropBox=(accessToken)=>{
     return new Promise(async(resolve,reject)=>{
         try{
@@ -78,10 +77,9 @@ const getFolderFromDropBox=(accessToken,path)=>{
     })
 }
 
-const downloadFolder=(accessToken,pathnm,name)=>{
+const downloadFolder=(accessToken,foldName,pathnm,name)=>{
     return new Promise(async(resolve,reject)=>{
         try {
-            console.log(accessToken, pathnm);
             
             const response = await axios.post('https://content.dropboxapi.com/2/files/download', null, {
                 headers: {
@@ -97,17 +95,18 @@ const downloadFolder=(accessToken,pathnm,name)=>{
             }
     
             const buffer = Buffer.from(response.data);
-            fs.writeFileSync(`${LocalStorageFolderRootPath}${pathnm}`, buffer, { flag: 'a',mode:0o777 });
-            fs.chmodSync(`${LocalStorageFolderRootPath}${pathnm}`,0o777);
+            const filePathName=path.join(__dirname,'..','test',foldName,pathnm);
+            fs.writeFileSync(filePathName, buffer, { flag: 'a',mode:0o777 });
+            fs.chmodSync(filePathName,0o777);
             resolve({
                 isError:false,
                 message:"download Completed",
                 name:name
             });
         } catch (e) {
-            console.log(e.message);
+            console.log("download err",e.message);
             resolve({
-                isError:false,
+                isError:true,
                 message:e.message
             });
         }
@@ -115,40 +114,39 @@ const downloadFolder=(accessToken,pathnm,name)=>{
     })
 }
 
-const downloadEverything=async(access_token,Filepath)=>{
+
+const downloadEverything=async(access_token,Filepath,folderName)=>{
     return new Promise(async(resolve,reject)=>{
         const ent=await getFolderFromDropBox(access_token,Filepath);
         const entries=ent["entries"];
+        let downloadLogs=[];
         for(var i=0;i<entries.length;i++){
             try{
                 if(entries[i][".tag"]=="folder"){
                     try{
-                        const dirPath=path.join('./test',entries[i]["path_lower"]);
+                        const dirPath=path.join(__dirname,'..','test',folderName,entries[i]["path_lower"]);
                         fs.mkdirSync(dirPath, { recursive: true ,mode:0o777});
                         fs.chmodSync(dirPath,0o777);
-                        await downloadEverything(access_token,entries[i]["path_lower"]);
+                        let dnLogs=await downloadEverything(access_token,entries[i]["path_lower"],folderName);
+                        downloadLogs=[...downloadLogs,...dnLogs];
+                        
                     }catch(e){
-                        console.log(e.message)
-                        fs.writeFileSync('./fileErrorLog.txt',`error while downloading the folder with name ${entries[i]["name"]} having path " ${entries[i]["path_lower"]} " , error= ${e.message} \n`,{flag:'a',mode: 0o666 })
+                        downloadLogs.push([entries[i]["name"],path.join(__dirname,'..','test',folderName,entries[i]["path_lower"]),entries[i]["path_lower"],"folder path err",e.message]);
                     }
                 }else{
-                    let fileDown=await downloadFolder(access_token,entries[i]["path_lower"]);
+                    let fileDown=await downloadFolder(access_token,folderName,entries[i]["path_lower"],entries[i]["name"]);
                     if(fileDown.isError){
-                        fs.writeFileSync('./fileErrorLog.txt',`error while downloading the file with name ${entries[i]["name"]} having folder path " ${entries[i]["path_lower"]} " , error= ${fileDown.message} \n`,{flag:'a',mode: 0o666})
+                        downloadLogs.push([entries[i]["name"],path.join(__dirname,'..','test',folderName,entries[i]["path_lower"]),entries[i]["path_lower"],"download error",fileDown.message]);
                     }
                     else{
-                        try{
-                            fs.writeFileSync('./downloadLog.txt',`downloaded the file with name ${entries[i]["name"]} in folder " ${entries[i]["path_lower"]} " \n`,{flag:'a',mode: 0o666})
-                        }catch(e){
-                            fs.writeFileSync('./fileWriteErrorLog.txt',`write error while writing the file with name ${entries[i]["name"]} having folder path " ${entries[i]["path_lower"]} " , error= ${e.message} \n`,{flag:'a',mode: 0o666})
-                        }
+                        downloadLogs.push([entries[i]["name"],path.join(__dirname,'..','test',folderName,entries[i]["path_lower"]),entries[i]["path_lower"],"downloaded successfully"]);
                     }
                 }
             }catch(e){
-                fs.writeFileSync('./fileErrorLog.txt',`error while downloading the file or folder name ${entries[i]["name"]} residing in path " ${entries[i]["path_lower"]} " , error= ${e.message} \n`,{flag:'a',mode: 0o666})
+                downloadLogs.push([entries[i]["name"],path.join(__dirname,'..','test',folderName,entries[i]["path_lower"]),entries[i]["path_lower"],"unknown error",e.message]);
             }
         }
-        resolve("done");
+        resolve(downloadLogs);
     })
 }
 
