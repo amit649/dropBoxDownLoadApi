@@ -80,7 +80,7 @@ const getFolderFromDropBox=(accessToken,path)=>{
 const downloadFolder=(accessToken,foldName,pathnm,name)=>{
     return new Promise(async(resolve,reject)=>{
         try {
-            
+            console.log(pathnm)
             const response = await axios.post('https://content.dropboxapi.com/2/files/download', null, {
                 headers: {
                     'Authorization': `Bearer ${accessToken}`,
@@ -117,6 +117,7 @@ const downloadFolder=(accessToken,foldName,pathnm,name)=>{
 
 const downloadEverything=async(access_token,Filepath,folderName)=>{
     return new Promise(async(resolve,reject)=>{
+        console.log("recursive call")
         const ent=await getFolderFromDropBox(access_token,Filepath);
         const entries=ent["entries"];
         let downloadLogs=[];
@@ -150,5 +151,30 @@ const downloadEverything=async(access_token,Filepath,folderName)=>{
     })
 }
 
+const getSizeOfDropBoxFile=async(access_token,Filepath)=>{
+    return new Promise(async(resolve,reject)=>{
+        const ent=await getFolderFromDropBox(access_token,Filepath);
+        const entries=ent["entries"];
+        let filesize=0;
+        for(var i=0;i<entries.length;i++){
+            try{
+                if(entries[i][".tag"]=="folder"){
+                    try{
+                        filesize+=await getSizeOfDropBoxFile(access_token,entries[i]["path_lower"]);
+                    }catch(e){
+                        
+                    }
+                }else{
+                    filesize+=parseInt(entries[i]["size"]);
+                    console.log("size of file -->> "+filesize)
+                }
+            }catch(e){
+                
+            }
+        }
+        resolve(filesize);
+    })
+}
 
-module.exports={getAccessTokenUsingRefreshToken,getAllFilesFromDropBox,getFolderFromDropBox,downloadFolder,downloadEverything}
+
+module.exports={getAccessTokenUsingRefreshToken,getAllFilesFromDropBox,getFolderFromDropBox,downloadFolder,downloadEverything,getSizeOfDropBoxFile}

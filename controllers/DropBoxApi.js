@@ -1,4 +1,4 @@
-const { getAccessTokenUsingRefreshToken, getAllFilesFromDropBox ,getFolderFromDropBox,downloadFolder,downloadEverything} = require('../Helpers/DropBoxHelper');
+const { getAccessTokenUsingRefreshToken, getAllFilesFromDropBox ,getFolderFromDropBox,downloadFolder,downloadEverything, getSizeOfDropBoxFile} = require('../Helpers/DropBoxHelper');
 const {v4:uuidv4}=require('uuid')
 const Router=require('express').Router();
 const fs=require('fs')
@@ -19,6 +19,33 @@ Router.get('/fileList',async(req,res)=>{
     
 })
 
+Router.get('/getSize',async(req,res)=>{
+    try{
+        const {path,accessToken}=req.query;
+        let downPath="";
+        if(path){
+            downPath=path;
+        }
+        let access_token="";
+        if(accessToken){
+            console.log(accessToken)
+            access_token=accessToken;
+        }  
+        else{
+            access_token=await getAccessTokenUsingRefreshToken();
+            access_token=access_token.accessToken;
+        }
+        
+        let size=await getSizeOfDropBoxFile(access_token,downPath);
+        size/=1000000000;
+        res.json({
+            isError:false,
+            message:size+"gb"
+        })
+    }catch(e){
+        res.json(e.message)
+    }
+})
 
 Router.get('/fileDownload',async(req,res)=>{
     try{
@@ -61,10 +88,24 @@ Router.get('/fileDownload',async(req,res)=>{
         const sheetName="download logs sheet";
         const worksheet=xlsx.utils.aoa_to_sheet(xlWorkbookData)
 
+        for (let i = 0; i < xlWorkbookData[0].length; i++) {
+            const cell = worksheet[xlsx.utils.encode_cell({ r: 0, c: i })];
+            cell.s = {
+                font: {
+                    bold: true,
+                    size: 14, // Adjust font size as needed
+                    color: { rgb: 'FFFFFF' } // White text color
+                },
+                fill: {
+                    fgColor: { rgb: '000000' } // Black background color
+                }
+            };
+        }
+
         xlsx.utils.book_append_sheet(workbook,worksheet,sheetName);
 
         xlsx.writeFile(workbook,excelWorkBookPath);
-        
+
         res.json({
             isError:false,
             message:'download done check logs for the same'
