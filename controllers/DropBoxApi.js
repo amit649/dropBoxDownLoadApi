@@ -8,11 +8,38 @@ const xlsx=require('xlsx')
 Router.get('/fileList',async(req,res)=>{
 
     try{
-        const token=await getAccessTokenUsingRefreshToken();
-        const access_token=token.accessToken
-        const files=await getFolderFromDropBox(access_token,"");
+        const {path,accessToken}=req.query;
+
+        let downPath="";
+
+        if(path){
+
+        downPath=path;
+
+        }
+
+        let access_token="";
+
+        if(accessToken){
+
+        console.log(accessToken)
+
+        access_token=accessToken;
+
+        }
+
+        else{
+
+        access_token=await getAccessTokenUsingRefreshToken();
+
+        access_token=access_token.accessToken;
+
+        }
+
+        const files=await getFolderFromDropBox(access_token,path);
+
         res.json(files);
-        
+            
     }catch(e){
         res.json(e.message)
     }
