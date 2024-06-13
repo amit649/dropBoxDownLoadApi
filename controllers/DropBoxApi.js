@@ -37,10 +37,11 @@ Router.get('/getSize',async(req,res)=>{
         }
         
         let size=await getSizeOfDropBoxFile(access_token,downPath);
+        console.log("the final size we get after all the recursion:",size)
         size/=1000000000;
         res.json({
             isError:false,
-            message:size+"gb"
+            message:size.toString+"gb"
         })
     }catch(e){
         res.json(e.message)

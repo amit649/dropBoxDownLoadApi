@@ -132,20 +132,28 @@ const downloadEverything=async(access_token,Filepath,folderName)=>{
                         downloadLogs=[...downloadLogs,...dnLogs];
                         
                     }catch(e){
+                        let stringErr=entries[i]["name"]+" "+path.join(__dirname,'..','test',folderName,entries[i]["path_lower"])+" "+entries[i]["path_lower"]+" "+"--->folder path err--->"+e.message;
                         downloadLogs.push([entries[i]["name"],path.join(__dirname,'..','test',folderName,entries[i]["path_lower"]),entries[i]["path_lower"],"folder path err",e.message]);
+                        fs.writeFileSync(path.join(__dirname,"..","logs.txt"),stringErr,{flag:"a"});
                     }
                 }else{
                     let fileDown=await downloadFolder(access_token,folderName,entries[i]["path_lower"],entries[i]["name"]);
                     if(fileDown.isError){
+                        let stringErr=entries[i]["name"]+" "+path.join(__dirname,'..','test',folderName,entries[i]["path_lower"])+" "+entries[i]["path_lower"]+" "+" ---> download error ---> "+fileDown.message;
                         downloadLogs.push([entries[i]["name"],path.join(__dirname,'..','test',folderName,entries[i]["path_lower"]),entries[i]["path_lower"],"download error",fileDown.message]);
+                        fs.writeFileSync(path.join(__dirname,"..","logs.txt"),stringErr,{flag:"a"});
                     }
                     else{
+                        let stringErr=entries[i]["name"]+" "+path.join(__dirname,'..','test',folderName,entries[i]["path_lower"])+" "+entries[i]["path_lower"]+" "+"downloaded successfully";
                         downloadLogs.push([entries[i]["name"],path.join(__dirname,'..','test',folderName,entries[i]["path_lower"]),entries[i]["path_lower"],"downloaded successfully"]);
+                        fs.writeFileSync(path.join(__dirname,"..","logs.txt"),stringErr,{flag:"a"});
                     }
                 }
             }catch(e){
+                let stringErr=entries[i]["name"]+" "+path.join(__dirname,'..','test',folderName,entries[i]["path_lower"])+" "+entries[i]["path_lower"]+" "+" ---> unknown error ---> "+e.message;
                 downloadLogs.push([entries[i]["name"],path.join(__dirname,'..','test',folderName,entries[i]["path_lower"]),entries[i]["path_lower"],"unknown error",e.message]);
-            }
+                fs.writeFileSync(path.join(__dirname,"..","logs.txt"),stringErr,{flag:"a"});
+            }   
         }
         resolve(downloadLogs);
     })
@@ -153,6 +161,7 @@ const downloadEverything=async(access_token,Filepath,folderName)=>{
 
 const getSizeOfDropBoxFile=async(access_token,Filepath)=>{
     return new Promise(async(resolve,reject)=>{
+
         const ent=await getFolderFromDropBox(access_token,Filepath);
         const entries=ent["entries"];
         let filesize=0;
@@ -160,18 +169,23 @@ const getSizeOfDropBoxFile=async(access_token,Filepath)=>{
             try{
                 if(entries[i][".tag"]=="folder"){
                     try{
-                        filesize+=await getSizeOfDropBoxFile(access_token,entries[i]["path_lower"]);
+                        let fl=await getSizeOfDropBoxFile(access_token,entries[i]["path_lower"]);
+                        filesize+=fl;
+                        console.log("return recursve call file size---->>>>>>",fl)
                     }catch(e){
                         
                     }
                 }else{
                     filesize+=parseInt(entries[i]["size"]);
-                    console.log("size of file -->> "+filesize)
+                    console.log("size of file when traversion through it -->> "+entries[i]["size"]);
+                    console.log("total file Size total----->>>",filesize);
+                    fs.writeFileSync(path.join(__dirname,"..","callLog.txt"),entries[i]["size"].toString()+"\n",{flag:'a'});
                 }
             }catch(e){
                 
             }
         }
+        
         resolve(filesize);
     })
 }
